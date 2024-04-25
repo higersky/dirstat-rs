@@ -31,7 +31,9 @@ const_format = "0.2.23"
 [profile.release]
 lto = 'fat'
 codegen-units = 1
+strip = true
 incremental = false
+panic = 'abort'
 
 [[bin]]
 bench = false

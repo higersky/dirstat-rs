@@ -1,3 +1,4 @@
+use dashmap::DashMap;
 use rayon::prelude::*;
 use serde::Serialize;
 use std::error::Error;
@@ -19,6 +20,7 @@ impl DiskItem {
         path: &Path,
         apparent: bool,
         root_dev: u64,
+        depth_limit: usize,
     ) -> Result<Self, Box<dyn Error>> {
         #[cfg(windows)]
         {
@@ -33,16 +35,20 @@ impl DiskItem {
                     absolute_dir.as_ref(),
                     apparent,
                     root_dev,
+                    &DashMap::new(),
+                    depth_limit,
                 );
             }
         }
-        return Self::analyze(path, apparent, root_dev);
+        return Self::analyze(path, apparent, root_dev, &DashMap::new(), depth_limit);
     }
 
     fn analyze(
         path: &Path,
         apparent: bool,
         root_dev: u64,
+        fileid_map: &DashMap<u64, u64>,
+        depth_limit: usize,
     ) -> Result<Self, Box<dyn Error>> {
         let name = path
             .file_name()
@@ -53,7 +59,7 @@ impl DiskItem {
         let file_info = FileInfo::from_path(path, apparent)?;
 
         match file_info {
-            FileInfo::Directory { volume_id } => {
+            FileInfo::Directory { volume_id, .. } => {
                 if volume_id != root_dev {
                     return Err("Filesystem boundary crossed".into());
                 }
@@ -62,33 +68,83 @@ impl DiskItem {
                     .filter_map(Result::ok)
                     .collect::<Vec<_>>();
 
-                let mut sub_items = sub_entries
-                    .par_iter()
-                    .filter_map(|entry| {
-                        DiskItem::from_analyze(&entry.path(), apparent, root_dev).ok()
-                    })
-                    .collect::<Vec<_>>();
+                let (mut sub_items, disk_size) = if depth_limit > 0 {
+                    let my_fileid_map = DashMap::new();
+                    let sub_items = sub_entries
+                        .par_iter()
+                        .filter_map(|entry| {
+                            DiskItem::analyze(
+                                &entry.path(),
+                                apparent,
+                                root_dev,
+                                &my_fileid_map,
+                                depth_limit - 1,
+                            )
+                            .ok()
+                        })
+                        .collect::<Vec<_>>();
+                    let disk_size: u64 = sub_items.iter().map(|di| di.disk_size).sum();
+                    let repeated_size: u64 = my_fileid_map
+                        .into_iter()
+                        .map(|(k, v)| {
+                            fileid_map.entry(k).and_modify(|x| *x += v).or_insert(0);
+                            v
+                        })
+                        .sum();
+                    (sub_items, disk_size - repeated_size)
+                } else {
+                    let sub_items = sub_entries
+                        .par_iter()
+                        .filter_map(|entry| {
+                            DiskItem::analyze(&entry.path(), apparent, root_dev, &fileid_map, 0)
+                                .ok()
+                        })
+                        .collect::<Vec<_>>();
+                    let disk_size = sub_items.iter().map(|di| di.disk_size).sum();
+                    (sub_items, disk_size)
+                };
 
                 sub_items.sort_unstable_by(|a, b| a.disk_size.cmp(&b.disk_size).reverse());
 
                 Ok(DiskItem {
                     name,
-                    disk_size: sub_items.iter().map(|di| di.disk_size).sum(),
-                    children: Some(sub_items),
+                    disk_size,
+                    children: if depth_limit > 0 {
+                        Some(sub_items)
+                    } else {
+                        None
+                    },
                 })
             }
-            FileInfo::File { size, .. } => Ok(DiskItem {
-                name,
-                disk_size: size,
-                children: None,
-            }),
+            FileInfo::File {
+                size,
+                file_id: inode,
+                ..
+            } => {
+                fileid_map
+                    .entry(inode)
+                    .and_modify(|x| *x += size)
+                    .or_insert(0);
+                Ok(DiskItem {
+                    name,
+                    disk_size: size,
+                    children: None,
+                })
+            }
         }
     }
 }
 
 pub enum FileInfo {
-    File { size: u64, volume_id: u64 },
-    Directory { volume_id: u64 },
+    File {
+        size: u64,
+        volume_id: u64,
+        file_id: u64,
+    },
+    Directory {
+        volume_id: u64,
+        file_id: u64,
+    },
 }
 
 impl FileInfo {
@@ -100,6 +156,7 @@ impl FileInfo {
         if md.is_dir() {
             Ok(FileInfo::Directory {
                 volume_id: md.dev(),
+                file_id: md.ino(),
             })
         } else {
             let size = if apparent {
@@ -110,6 +167,7 @@ impl FileInfo {
             Ok(FileInfo::File {
                 size,
                 volume_id: md.dev(),
+                file_id: md.ino(),
             })
         }
     }
@@ -125,6 +183,7 @@ impl FileInfo {
         if md.file_attributes() & FILE_ATTRIBUTE_DIRECTORY != 0 {
             Ok(FileInfo::Directory {
                 volume_id: md.volume_serial_number(),
+                file_id: md.file_index(),
             })
         } else {
             let size = if apparent {
@@ -135,6 +194,7 @@ impl FileInfo {
             Ok(FileInfo::File {
                 size,
                 volume_id: md.volume_serial_number(),
+                file_id: md.file_index(),
             })
         }
     }

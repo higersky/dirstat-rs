@@ -18,6 +18,7 @@ serde_json = "1.0"
 human_bytes = "0.4.3"
 clap = { version = "3", features = ["derive"]}
 is-terminal = "0.4.12"
+dashmap = "5.5.3"
 
 [target.'cfg(windows)'.dependencies]
 winapi-util = "0.1.8"

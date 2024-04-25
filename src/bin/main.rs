@@ -39,9 +39,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     };
 
     let analysed = match file_info {
-        FileInfo::Directory { volume_id } => {
-            DiskItem::from_analyze(&target_dir, config.apparent, volume_id)?
-        }
+        FileInfo::Directory { volume_id, .. } => DiskItem::from_analyze(
+            &target_dir,
+            config.apparent,
+            volume_id,
+            config.max_depth + 1,
+        )?,
         _ => return Err(format!("{} is not a directory!", target_dir.display()).into()),
     };
 

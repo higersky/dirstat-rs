@@ -52,7 +52,7 @@ fn test_max_path() {
 
     // Then
     if let Result::Ok(FileInfo::Directory { volume_id, .. }) = result {
-        let result = DiskItem::from_analyze(test_path, true, volume_id);
+        let result = DiskItem::from_analyze(test_path, true, volume_id, usize::MAX);
         let result = result.expect("Must collect data");
         assert_eq!(result.disk_size, 4096 + 8192);
         let children = result.children.unwrap();

@@ -52,7 +52,7 @@ impl DiskItem {
     ) -> Result<Self, Box<dyn Error>> {
         let name = path
             .file_name()
-            .unwrap_or(OsStr::new("."))
+            .unwrap_or_else(|| OsStr::new("."))
             .to_string_lossy()
             .to_string();
 

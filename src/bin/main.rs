@@ -1,12 +1,11 @@
-use atty::Stream;
+use clap::Parser;
 use dirstat_rs::{DiskItem, FileInfo};
-use pretty_bytes::converter::convert as pretty_bytes;
+use is_terminal::IsTerminal;
 use std::env;
 use std::error::Error;
 use std::io;
 use std::io::Write;
 use std::path::PathBuf;
-use structopt::StructOpt;
 use termcolor::{Buffer, BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
 
 const INDENT_COLOR: Option<Color> = Some(Color::Rgb(75, 75, 75));
@@ -26,7 +25,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let target_dir = config.target_dir.as_ref().unwrap_or(&current_dir);
     let file_info = FileInfo::from_path(&target_dir, config.apparent)?;
 
-    let color_choice = if atty::is(Stream::Stdout) {
+    let color_choice = if std::io::stdout().is_terminal() {
         ColorChoice::Auto
     } else {
         ColorChoice::Never
@@ -90,7 +89,11 @@ fn show_item(item: &DiskItem, info: &DisplayInfo, buffer: &mut Buffer) -> io::Re
     write!(buffer, " {} ", format!("{:.2}%", info.fraction))?;
     // Disk size
     buffer.reset()?;
-    write!(buffer, "[{}]", pretty_bytes(item.disk_size as f64),)?;
+    write!(
+        buffer,
+        "[{}]",
+        human_bytes::human_bytes(item.disk_size as f64),
+    )?;
     // Arrow
     buffer.set_color(ColorSpec::new().set_fg(INDENT_COLOR))?;
     write!(buffer, " {} ", shape::SPACING)?;
@@ -167,37 +170,37 @@ impl DisplayInfo {
     }
 }
 
-#[derive(StructOpt)]
+#[derive(Parser)]
 struct Config {
-    #[structopt(short = "d", default_value = "1")]
+    #[clap(short = 'd', default_value = "1")]
     /// Maximum recursion depth in directory.
     max_depth: usize,
 
-    #[structopt(
-        short = "m",
+    #[clap(
+        short = 'm',
         default_value = "0.1",
-        parse(try_from_str = "parse_percent")
+        parse(try_from_str = parse_percent)
     )]
     /// Threshold that determines if entry is worth
     /// being shown. Between 0-100 % of dir size.
     min_percent: f64,
 
-    #[structopt(parse(from_os_str))]
+    #[clap(parse(from_os_str))]
     target_dir: Option<PathBuf>,
 
-    #[structopt(short = "a")]
+    #[clap(short = 'a')]
     /// Apparent size on disk.
     ///
     /// This would actually retrieve allocation size of files (AKA physical size on disk)
     apparent: bool,
 
-    #[structopt(short = "j")]
+    #[clap(short = 'j')]
     /// Output sorted json.
     json: bool,
 }
 
-fn parse_percent(src: &str) -> Result<f64, Box<dyn Error>> {
-    let num = src.parse::<f64>()?;
+fn parse_percent(src: &str) -> Result<f64, String> {
+    let num = src.parse::<f64>().map_err(|x| x.to_string())?;
     if num >= 0.0 && num <= 100.0 {
         Ok(num)
     } else {

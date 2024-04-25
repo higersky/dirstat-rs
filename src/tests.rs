@@ -82,8 +82,8 @@ fn test_file_size() {
     let result = FileInfo::from_path(test_path, true);
 
     // Then
-    if let Result::Ok(FileInfo::Directory { volume_id }) = result {
-        let result = DiskItem::from_analyze(test_path, true, volume_id);
+    if let Result::Ok(FileInfo::Directory { volume_id, .. }) = result {
+        let result = DiskItem::from_analyze(test_path, true, volume_id, usize::MAX);
         let result = result.expect("Must collect data");
         assert_eq!(result.disk_size, 8192 + 8192);
         let children = result.children.unwrap();
@@ -99,8 +99,8 @@ fn test_file_size() {
     let result = FileInfo::from_path(test_path, false);
 
     // Then
-    if let Result::Ok(FileInfo::Directory { volume_id }) = result {
-        let result = DiskItem::from_analyze(test_path, false, volume_id);
+    if let Result::Ok(FileInfo::Directory { volume_id, .. }) = result {
+        let result = DiskItem::from_analyze(test_path, false, volume_id, usize::MAX);
         let result = result.expect("Must collect data");
         assert_eq!(result.disk_size, 8192 + 8192 - 5);
         let children = result.children.unwrap();

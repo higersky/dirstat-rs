@@ -23,7 +23,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let config = Config::from_args();
     let current_dir = env::current_dir()?;
     let target_dir = config.target_dir.as_ref().unwrap_or(&current_dir);
-    let file_info = FileInfo::from_path(&target_dir, config.apparent)?;
+    let file_info = FileInfo::from_path(target_dir, config.apparent)?;
 
     let color_choice = if std::io::stdout().is_terminal() {
         ColorChoice::Auto
@@ -39,12 +39,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     };
 
     let analysed = match file_info {
-        FileInfo::Directory { volume_id, .. } => DiskItem::from_analyze(
-            &target_dir,
-            config.apparent,
-            volume_id,
-            config.max_depth + 1,
-        )?,
+        FileInfo::Directory { volume_id, .. } => {
+            DiskItem::from_analyze(target_dir, config.apparent, volume_id, config.max_depth + 1)?
+        }
         _ => return Err(format!("{} is not a directory!", target_dir.display()).into()),
     };
 
@@ -61,7 +58,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 fn show(item: &DiskItem, conf: &Config, info: &DisplayInfo, buffer: &mut Buffer) -> io::Result<()> {
     // Show self
-    show_item(item, &info, buffer)?;
+    show_item(item, info, buffer)?;
     // Recursively show children
     if info.level < conf.max_depth {
         if let Some(children) = &item.children {
@@ -89,7 +86,7 @@ fn show_item(item: &DiskItem, info: &DisplayInfo, buffer: &mut Buffer) -> io::Re
     write!(buffer, "{}{}", info.indents, info.prefix())?;
     // Percentage
     buffer.set_color(ColorSpec::new().set_fg(info.color()))?;
-    write!(buffer, " {} ", format!("{:.2}%", info.fraction))?;
+    write!(buffer, " {:.2}% ", info.fraction)?;
     // Disk size
     buffer.reset()?;
     write!(
@@ -204,7 +201,7 @@ struct Config {
 
 fn parse_percent(src: &str) -> Result<f64, String> {
     let num = src.parse::<f64>().map_err(|x| x.to_string())?;
-    if num >= 0.0 && num <= 100.0 {
+    if (0.0..=100.0).contains(&num) {
         Ok(num)
     } else {
         Err("Percentage must be in range [0, 100].".into())

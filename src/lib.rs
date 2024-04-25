@@ -40,7 +40,7 @@ impl DiskItem {
                 );
             }
         }
-        return Self::analyze(path, apparent, root_dev, &DashMap::new(), depth_limit);
+        Self::analyze(path, apparent, root_dev, &DashMap::new(), depth_limit)
     }
 
     fn analyze(
@@ -52,7 +52,7 @@ impl DiskItem {
     ) -> Result<Self, Box<dyn Error>> {
         let name = path
             .file_name()
-            .unwrap_or(&OsStr::new("."))
+            .unwrap_or(OsStr::new("."))
             .to_string_lossy()
             .to_string();
 
@@ -96,8 +96,7 @@ impl DiskItem {
                     let sub_items = sub_entries
                         .par_iter()
                         .filter_map(|entry| {
-                            DiskItem::analyze(&entry.path(), apparent, root_dev, &fileid_map, 0)
-                                .ok()
+                            DiskItem::analyze(&entry.path(), apparent, root_dev, fileid_map, 0).ok()
                         })
                         .collect::<Vec<_>>();
                     let disk_size = sub_items.iter().map(|di| di.disk_size).sum();

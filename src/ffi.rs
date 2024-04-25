@@ -66,12 +66,12 @@ fn path_to_u16s(path: &Path) -> Vec<u16> {
         // network path from SMB
         let mut tmp = Vec::from(UNC_PREFIX);
         tmp.extend(&wide[2..]);
-        return tmp;
+        tmp
     } else {
         // if we came here, we aren't using network drive, so just prepend File namespace prefix
         let mut tmp = Vec::from(VERBATIM_PREFIX);
         tmp.extend(wide);
-        return tmp;
+        tmp
     }
 }
 

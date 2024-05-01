@@ -1,0 +1,10 @@
+[Unit]
+Description=Prometheus exporter for sizes of subdirectories
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/usr/local/share/home-sizes/data-sizes.sh
+
+[Install]
+WantedBy=multi-user.target

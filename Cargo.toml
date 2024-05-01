@@ -19,6 +19,9 @@ human_bytes = "0.4.3"
 clap = { version = "3", features = ["derive"]}
 is-terminal = "0.4.12"
 dashmap = "5.5.3"
+rmp-serde = "1.2.0"
+tracing = "0.1.40"
+tracing-subscriber = "0.3.18"
 
 [target.'cfg(windows)'.dependencies]
 winapi-util = "0.1.8"
@@ -37,5 +40,34 @@ panic = 'abort'
 
 [[bin]]
 bench = false
-path = "src/bin/main.rs"
+path = "src/bin/ds.rs"
 name = "ds"
+
+[[bin]]
+bench = false
+path = "src/bin/home-sizes-prom.rs"
+name = "home-sizes-prom"
+
+[package.metadata.deb]
+name = "home-sizes-prom"
+maintainer = "higersky <64680426+higersky@users.noreply.github.com>"
+copyright = "2024, higersky <64680426+higersky@users.noreply.github.com>"
+extended-description = """A prometheus client which monitors sizes of subdirectories under /home and /data"""
+depends = "prometheus-node-exporter"
+section = "utility"
+priority = "optional"
+assets = [
+    ["target/x86_64-unknown-linux-gnu/release/home-sizes-prom", "usr/local/bin/home-sizes-prom", "755"],
+    ["scripts/home-sizes.sh", "usr/local/share/home-sizes/home-sizes.sh", "755"],
+    ["scripts/data-sizes.sh", "usr/local/share/home-sizes/data-sizes.sh", "755"]
+]
+maintainer-scripts = "debian/"
+systemd-units = [
+    { unit-name = "prometheus-home-sizes", enable = true, start = false },
+    { unit-name = "prometheus-home-sizes-flush", enable = true, start = false},
+    { unit-name = "prometheus-home-sizes-daily", enable = true },
+    { unit-name = "prometheus-home-sizes-weekly", enable = true },
+    { unit-name = "prometheus-data-sizes", enable = true, start = false },
+    { unit-name = "prometheus-data-sizes-daily", enable = true },
+
+]

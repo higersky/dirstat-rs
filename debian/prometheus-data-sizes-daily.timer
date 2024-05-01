@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily task updating sizes of subdirectories
+Requires=prometheus-home-sizes.service
+
+[Timer]
+Unit=prometheus-data-sizes.service
+OnCalendar=*-*-* 5:00:00
+
+[Install]
+WantedBy=multi-user.target

@@ -1,71 +1,61 @@
-# dirstat-rs
+# dirstat && home-sizes-prom
+
+## home-sizes-prom
+
+A textfile collector for [node-exporter](https://github.com/prometheus/node_exporter#textfile-collector). It outputs the summarized sizes of subdirectories under a given folder (default: `/home`) in Prometheus exporter metrics format.
+
+It provides optional cache mechanism based on modification date of files. It can be used by a metric monitor to quickly estimate the used space without scanning the whole disk every time. You can tune the analyzing depth and threshold of durations to make it more accurate.
+
+### Usage
+
+#### Analyze /home  
+
+        $ home-sizes-prom
+
+#### Analyze /data
+
+        $ home-sizes-prom /data
+
+#### Analyze /home with cache 
+
+        $ home-sizes-prom /home -c /var/lib/home-sizes/home.msgpack
+
+#### Analyze /home with cache, depth limit and reliable estimation duration
+        # Set depth=3 and regard those folders modified 1 months ago in cache as reliable sizes
+        $ home-sizes-prom /home -c /var/lib/home-sizes/home.msgpack -d 3 -t 30
+
+
+
+## dirstat-rs
 
 Fast, cross-platform disk usage CLI
 
-[![Crates.io](https://img.shields.io/crates/v/dirstat-rs.svg)](https://crates.io/crates/dirstat-rs)
-[![Docs.rs](https://docs.rs/dirstat-rs/badge.svg)](https://docs.rs/dirstat-rs/)
+This fork fixed duplicate size counts of hardlinks by file id deduplication (Linux inodes, Windows dwVolumeSerialNumber, nFileIndexHigh, nFileIndexLow). 
+
 ![Language](https://img.shields.io/badge/language-rust-orange)
 ![Platforms](https://img.shields.io/badge/platforms-Windows%2C%20macOS%20and%20Linux-blue)
 ![License](https://img.shields.io/github/license/scullionw/dirstat-rs)
 
 ![](demo/ds_demo.gif)
 
-2X faster than du
+### Usage
 
-4X faster than ncdu, dutree, dua, du-dust
-
-6X faster than windirstat
-
-(On 4-core hyperthreaded cpu)
-        
-# Installation
-
-## Homebrew (macOS only)
-
-    brew tap scullionw/tap
-    brew install dirstat-rs
-
-## Or if you prefer compiling yourself
-
-### from crates.io:
-
-        cargo install dirstat-rs
-        
-### or latest from git:
-
-        cargo install --git "https://github.com/scullionw/dirstat-rs"
-        
-### or from source:
-
-        cargo build --release
-        sudo chmod +x /target/release/ds
-        sudo cp /target/release/ds /usr/local/bin/
-
-# Usage
-
-### Current directory
+#### Current directory
     
         $ ds
     
-### Specific path
+#### Specific path
  
         $ ds PATH
 
-### Choose depth
+#### Choose depth
  
         $ ds -d 3
 
-### Show apparent size on disk
+#### Show apparent size on disk
 
         $ ds -a PATH
 
-### Override minimum size threshold
+#### Override minimum size threshold
 
         $ ds -m 0.2 PATH
-
-
-
-    
-    
-    
-    
